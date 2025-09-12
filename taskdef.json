@@ -11,7 +11,7 @@
   "containerDefinitions": [
     {
       "name": "web",
-      "image": "<IMAGE_URI>",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/multi-agent-app:latest",
       "portMappings": [
         {
           "containerPort": 8080,

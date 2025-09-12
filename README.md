@@ -17,7 +17,7 @@ uvicorn app.main:app --reload --port 8080
 ```
 
 ## One-time AWS setup
-1. Create ECR repo `multi-agent-app` in `ap-southeast-1`.
+1. Create ECR repo `multi-agent-app` in `us-east-1`.
 2. Create ECS cluster + service (`multi-agent-cluster` / `multi-agent-svc`) with Fargate + ALB to port 8080.
 3. Create CloudWatch Logs group `/ecs/multi-agent-svc`.
 4. Set up GitHub OIDC role `github-oidc-deployer` with permissions for ECR/ECS/PassRole.
