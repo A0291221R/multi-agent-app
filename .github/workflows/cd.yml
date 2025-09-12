@@ -1,0 +1,56 @@
+name: CD
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPO: multi-agent-app
+  ECS_CLUSTER: multi-agent-cluster
+  ECS_SERVICE: multi-agent-svc
+  TASKDEF_FILE: taskdef.json
+
+jobs:
+  deploy:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS creds via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-oidc-deployer
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, push image
+        env:
+          ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          IMAGE=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${GITHUB_SHA}
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE_URI=$IMAGE" >> $GITHUB_ENV
+
+      - name: Render taskdef with image
+        run: |
+          sed "s#<IMAGE_URI>#${IMAGE_URI}#g; s#<AWS_REGION>#${AWS_REGION}#g" ${TASKDEF_FILE} > taskdef.rendered.json
+
+      - name: Register task definition
+        id: taskdef
+        run: |
+          ARN=$(aws ecs register-task-definition --cli-input-json file://taskdef.rendered.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "TASKDEF_ARN=$ARN" >> $GITHUB_ENV
+
+      - name: Update ECS service
+        run: |
+          aws ecs update-service             --cluster "${ECS_CLUSTER}"             --service "${ECS_SERVICE}"             --task-definition "${TASKDEF_ARN}"             --force-new-deployment
