@@ -45,6 +45,11 @@ jobs:
         run: |
           sed "s#<IMAGE_URI>#${IMAGE_URI}#g; s#<AWS_REGION>#${AWS_REGION}#g" ${TASKDEF_FILE} > taskdef.rendered.json
 
+      - name: Who am I?
+        run: |
+          aws sts get-caller-identity
+          aws configure list
+
       - name: Register task definition
         id: taskdef
         run: |
